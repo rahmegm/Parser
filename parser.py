@@ -249,8 +249,30 @@ class Parser:
         return Block(statements, span=self._span(start, end))
 
     def parse_statement(self) -> Stmt:
-        raise NotImplementedError("implemente statement")
+        if self.peek().kind in TYPE_START:
+            return self.parse_declaration()
 
+        elif self.peek().kind is TokenKind.IDENTIFIER:
+            return self.parse_id_or_call_statement()
+
+        elif self.peek().kind is TokenKind.KW_IF:
+            return self.parse_if_statement()
+
+        elif self.peek().kind is TokenKind.KW_WHILE:
+            return self.parse_while_statement()
+
+        elif self.peek().kind is TokenKind.KW_RETURN:
+            return self.parse_return_statement()
+
+        elif self.peek().kind is TokenKind.KW_PRINT:
+            return self.parse_print_statement()
+
+        elif self.peek().kind is TokenKind.LEFT_BRACE:
+            return self.parse_block()
+
+        else:
+            raise ParserError(self.peek(), STATEMENT_START)
+        
     def parse_id_or_call_statement(self) -> Stmt:
         raise NotImplementedError("implemente id_or_call_statement")
 
