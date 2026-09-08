@@ -15,6 +15,21 @@ from ast_nodes import (
     Stmt,
     StringLiteral,
     TypeName,
+    UnaryOperator,
+    BinaryOperator,
+    VarDecl,
+    Assignment,
+    CallStmt,
+    IfStmt,
+    WhileStmt,
+    ReturnStmt,
+    PrintStmt,
+    BinaryExpr,
+    UnaryExpr,
+    CallExpr,
+    IdentifierExpr,
+    IntLiteral,
+    BoolLiteral,
 )
 
 
@@ -172,13 +187,66 @@ class Parser:
         return TYPE_BY_TOKEN[token.kind]
 
     def parse_parameter_list(self) -> list[Parameter]:
-        raise NotImplementedError("implemente parameter_list")
+        parameters = [self.parse_parameter()]
 
+        while self.match(TokenKind.COMMA):
+            parameters.append(self.parse_parameter())
+
+        return parameters
+       
     def parse_parameter(self) -> Parameter:
-        raise NotImplementedError("implemente parameter")
+        #pega o token atual sem consumir ele
+        #aqui estamos guardando onde o parâmetro começa
+        #exemplo: em "int idade", pega o token "int"
+        start = self.peek()
+
+        #chama a função parse_type() para ler o tipo do parâmetro
+        #exemplo: "int" vira TypeName.INT
+        #depois disso, o "int" já foi consumido e o próximo token é "idade"
+        parameter_type = self.parse_type()
+
+        #exige que o próximo token seja um IDENTIFIER
+        #se for, consome o token e guarda ele na variável "name"
+        #exemplo: name será o Token correspondente a "idade"
+        name = self.expect(TokenKind.IDENTIFIER)
+
+        return Parameter(
+        #coloca o tipo do parâmetro
+        #exemplo: TypeName.INT    
+        parameter_type,
+
+        #pega o texto do token IDENTIFIER
+        #name é o Token "idade"
+        #name.lexeme é a string "idade"
+        name.lexeme,
+
+        #calcula a posição do parâmetro no código-fonte
+        #começa no token "int" (start)
+        #e termina no token "idade" (name)
+        span=self._span(start, name),
+        )
+        
 
     def parse_block(self) -> Block:
-        raise NotImplementedError("implemente block")
+        #guarda o token atual sem consumi-lo, para usar como início do span do bloco
+        start = self.peek()
+
+        #exige e consome o token '{', que inicia o bloco
+        self.expect(TokenKind.LEFT_BRACE)
+
+        #lista que vai armazenar todos os comandos (statements) do bloco
+        statements = []
+
+        #enquanto o token atual puder iniciar um statement, continua lendo statements
+        while self.peek().kind in STATEMENT_START:
+            #analisa um statement e adiciona o resultado à lista do bloco
+            statements.append(self.parse_statement())
+
+        #exige e consome o token '}', que encerra o bloco
+        end = self.expect(TokenKind.RIGHT_BRACE)
+
+        #cria e retorna o nó Block com os statements e o intervalo de origem do bloco.
+        return Block(statements, span=self._span(start, end))
 
     def parse_statement(self) -> Stmt:
         raise NotImplementedError("implemente statement")
