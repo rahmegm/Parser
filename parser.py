@@ -274,7 +274,20 @@ class Parser:
             raise ParserError(self.peek(), STATEMENT_START)
         
     def parse_id_or_call_statement(self) -> Stmt:
-        raise NotImplementedError("implemente id_or_call_statement")
+        start = self.expect(TokenKind.IDENTIFIER)
+        branch = self.expect({TokenKind.ASSIGN, TokenKind.LEFT_PAREN})
+
+        if branch.kind is TokenKind.ASSIGN:
+            value = self.parse_expression()
+            end = self.expect(TokenKind.SEMICOLON)
+            target = IdentifierExpr(start.lexeme, span=self._token_span(start))
+            return Assignment(target, value, span=self._span(start, end))
+
+        arguments = self.parse_arguments()
+        close = self.expect(TokenKind.RIGHT_PAREN)
+        end = self.expect(TokenKind.SEMICOLON)
+        call = CallExpr(start.lexeme, arguments, span=self._span(start, close))
+        return CallStmt(call, span=self._span(start, end))
 
     def parse_declaration(self) -> Stmt:
         raise NotImplementedError("implemente declaration")
