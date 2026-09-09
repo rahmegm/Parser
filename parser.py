@@ -290,10 +290,40 @@ class Parser:
         return CallStmt(call, span=self._span(start, end))
 
     def parse_declaration(self) -> Stmt:
-        raise NotImplementedError("implemente declaration")
+        start = self.peek()
+        declared_type = self.parse_type()
+        name = self.expect(TokenKind.IDENTIFIER)
+
+        initializer = None
+        if self.match(TokenKind.ASSIGN):
+            initializer = self.parse_expression()
+
+        end = self.expect(TokenKind.SEMICOLON)
+        return VarDecl(
+            declared_type,
+            name.lexeme,
+            initializer,
+            span=self._span(start, end),
+        )
 
     def parse_if_statement(self) -> Stmt:
-        raise NotImplementedError("implemente if_statement")
+        start = self.expect(TokenKind.KW_IF)
+        self.expect(TokenKind.LEFT_PAREN)
+        condition = self.parse_expression()
+        self.expect(TokenKind.RIGHT_PAREN)
+        then_block = self.parse_block()
+
+        else_block = None
+        if self.match(TokenKind.KW_ELSE):
+            else_block = self.parse_block()
+
+        end = then_block if else_block is None else else_block
+        return IfStmt(
+            condition,
+            then_block,
+            else_block,
+            span=self._span(start, end),
+        )
 
     def parse_while_statement(self) -> Stmt:
         raise NotImplementedError("implemente while_statement")
