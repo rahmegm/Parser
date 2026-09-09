@@ -326,7 +326,12 @@ class Parser:
         )
 
     def parse_while_statement(self) -> Stmt:
-        raise NotImplementedError("implemente while_statement")
+        start = self.expect(TokenKind.KW_WHILE)
+        self.expect(TokenKind.LEFT_PAREN)
+        condition = self.parse_expression()
+        self.expect(TokenKind.RIGHT_PAREN)
+        body = self.parse_block()
+        return WhileStmt(condition, body, span=self._span(start, body))
 
     def parse_return_statement(self) -> Stmt:
         raise NotImplementedError("implemente return_statement")
