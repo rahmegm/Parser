@@ -334,13 +334,29 @@ class Parser:
         return WhileStmt(condition, body, span=self._span(start, body))
 
     def parse_return_statement(self) -> Stmt:
-        raise NotImplementedError("implemente return_statement")
+        start = self.expect(TokenKind.KW_RETURN)
+        if self.peek().kind in EXPRESSION_START:
+            retorno_exp = self.parse_expression()
+        else:
+            retorno_exp = None
+        end = self.expect(TokenKind.SEMICOLON)
+        return ReturnStmt(retorno_exp, span=self._span(start, end))    
 
     def parse_print_statement(self) -> Stmt:
-        raise NotImplementedError("implemente print_statement")
+        start = self.expect(TokenKind.KW_PRINT)
+        self.expect(TokenKind.LEFT_PAREN)
+        lista = [self.parse_print_item()]
+        while self.match(TokenKind.COMMA):
+            lista.append(self.parse_print_item())
+        self.expect(TokenKind.RIGHT_PAREN)   
+        end = self.expect(TokenKind.SEMICOLON) 
+        return PrintStmt(lista, span=self._span(start, end))
 
     def parse_print_item(self) -> PrintItem:
-        raise NotImplementedError("implemente print_item")
+        if self.peek().kind in EXPRESSION_START:
+            return self.parse_expression()
+        elif self.check(TokenKind.STRING_LITERAL)
+            return self.parse_string_literals()
 
     def parse_string_literals(self) -> StringLiteral:
         raise NotImplementedError("implemente string_literals")
