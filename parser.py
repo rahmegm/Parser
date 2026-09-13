@@ -355,39 +355,140 @@ class Parser:
     def parse_print_item(self) -> PrintItem:
         if self.peek().kind in EXPRESSION_START:
             return self.parse_expression()
-        elif self.check(TokenKind.STRING_LITERAL)
+        elif self.check(TokenKind.STRING_LITERAL):
             return self.parse_string_literals()
+        else:
+            raise ParserError(self.peek(), EXPRESSION_START | {TokenKind.STRING_LITERAL})
 
     def parse_string_literals(self) -> StringLiteral:
-        raise NotImplementedError("implemente string_literals")
+        start = self.expect(TokenKind.STRING_LITERAL)
+        value = start.value
+        end = start
+        while self.check(TokenKind.STRING_LITERAL):
+            end = self.advance()
+            value += end.value
+        return StringLiteral(value, span=self._span(start, end))
 
     def parse_expression(self) -> Expr:
-        raise NotImplementedError("implemente expression")
+        return self.parse_logical_or()
 
     def parse_logical_or(self) -> Expr:
-        raise NotImplementedError("implemente logical_or")
+        left = self.parse_logical_and()
+        while self.match(TokenKind.LOGICAL_OR):
+            right = self.parse_logical_and()
+            left = BinaryExpr(BinaryOperator.LOGICAL_OR, left, right, span=self._span(left, right))
+        return left
 
     def parse_logical_and(self) -> Expr:
-        raise NotImplementedError("implemente logical_and")
+        left = self.parse_equality()
+        while self.match(TokenKind.LOGICAL_AND):
+            right = self.parse_equality()
+            left = BinaryExpr(BinaryOperator.LOGICAL_AND, left, right, span=self._span(left, right))
+        return left
 
     def parse_equality(self) -> Expr:
-        raise NotImplementedError("implemente equality")
+        left = self.parse_relational()
+        operator_token = self.match(TokenKind.EQUAL_EQUAL, TokenKind.NOT_EQUAL)
+        while operator_token is not None:
+            right = self.parse_relational()
+            if operator_token.kind is TokenKind.EQUAL_EQUAL:
+                operator = BinaryOperator.EQUAL
+            else:
+                operator = BinaryOperator.NOT_EQUAL
+            left = BinaryExpr(operator, left, right, span=self._span(left, right))
+            operator_token = self.match(TokenKind.EQUAL_EQUAL, TokenKind.NOT_EQUAL)
+        return left
 
     def parse_relational(self) -> Expr:
-        raise NotImplementedError("implemente relational")
+        left = self.parse_additive()
+        operator_token = self.match(TokenKind.LESS, TokenKind.LESS_EQUAL, TokenKind.GREATER, TokenKind.GREATER_EQUAL)
+        while operator_token is not None:
+            right = self.parse_additive()
+            if operator_token.kind is TokenKind.LESS:
+                operator = BinaryOperator.LESS
+            elif operator_token.kind is TokenKind.LESS_EQUAL:
+                operator = BinaryOperator.LESS_EQUAL
+            elif operator_token.kind is TokenKind.GREATER:
+                operator = BinaryOperator.GREATER
+            else:
+                operator = BinaryOperator.GREATER_EQUAL
+            left = BinaryExpr(operator, left, right, span=self._span(left, right))
+            operator_token = self.match(TokenKind.LESS, TokenKind.LESS_EQUAL, TokenKind.GREATER, TokenKind.GREATER_EQUAL)
+        return left
 
     def parse_additive(self) -> Expr:
-        raise NotImplementedError("implemente additive")
+        left = self.parse_multiplicative()
+        operator_token = self.match(TokenKind.PLUS, TokenKind.MINUS)
+        while operator_token is not None:
+            right = self.parse_multiplicative()
+            if operator_token.kind is TokenKind.PLUS:
+                operator = BinaryOperator.ADD
+            else:
+                operator = BinaryOperator.SUBTRACT
+            left = BinaryExpr(operator, left, right, span=self._span(left, right))
+            operator_token = self.match(TokenKind.PLUS, TokenKind.MINUS)
+        return left
 
     def parse_multiplicative(self) -> Expr:
-        raise NotImplementedError("implemente multiplicative")
+        left = self.parse_unary()
+        operator_token = self.match(TokenKind.STAR, TokenKind.SLASH, TokenKind.PERCENT)
+        while operator_token is not None:
+            right = self.parse_unary()
+            if operator_token.kind is TokenKind.STAR:
+                operator = BinaryOperator.MULTIPLY
+            elif operator_token.kind is TokenKind.SLASH:
+                operator = BinaryOperator.DIVIDE
+            else:
+                operator = BinaryOperator.REMAINDER
+            left = BinaryExpr(operator, left, right, span=self._span(left, right))
+            operator_token = self.match(TokenKind.STAR, TokenKind.SLASH, TokenKind.PERCENT)
+        return left
+        
 
     def parse_unary(self) -> Expr:
-        raise NotImplementedError("implemente unary")
+        operator_token = self.match(TokenKind.LOGICAL_NOT, TokenKind.MINUS)
+        if operator_token is not None:
+            operand = self.parse_unary()
+            if operator_token.kind is TokenKind.LOGICAL_NOT:
+                return UnaryExpr(UnaryOperator.NOT, operand, span=self._span(operator_token, operand))
+            else:
+                return UnaryExpr(UnaryOperator.NEGATE, operand, span=self._span(operator_token, operand))
+        return self.parse_primary()
 
     def parse_primary(self) -> Expr:
-        raise NotImplementedError("implemente primary")
+        if self.check(TokenKind.LEFT_PAREN):
+            start = self.expect(TokenKind.LEFT_PAREN)
+            expr = self.parse_expression()
+            end = self.expect(TokenKind.RIGHT_PAREN)
+            expr.span = self._span(start, end)
+            return expr
+        elif self.check(TokenKind.IDENTIFIER):
+            start = self.advance() #consome o token IDENTIFIER
+            if self.check(TokenKind.LEFT_PAREN):
+                self.advance() #consome o token LEFT_PAREN
+                arguments = self.parse_arguments()
+                end = self.expect(TokenKind.RIGHT_PAREN)
+                return CallExpr(start.lexeme, arguments, span=self._span(start, end))
+            else:
+                return IdentifierExpr(start.lexeme, span=self._token_span(start))
+        elif self.check(TokenKind.INT_LITERAL):
+            start = self.advance()
+            return IntLiteral(start.value, span=self._token_span(start))
+        elif self.check(TokenKind.KW_TRUE):
+            start = self.advance()
+            return BoolLiteral(start.value, span=self._token_span(start))
+        elif self.check(TokenKind.KW_FALSE):
+            start = self.advance()
+            return BoolLiteral(start.value, span=self._token_span(start))
+        else:
+            #self.peek() token que deu problema, a segunda parte é o conjunto de tokens que eram esperados
+            raise ParserError(self.peek(), {TokenKind.LEFT_PAREN, TokenKind.IDENTIFIER, TokenKind.INT_LITERAL, TokenKind.KW_TRUE, TokenKind.KW_FALSE}) 
 
     def parse_arguments(self) -> list[Expr]:
-        raise NotImplementedError("implemente arguments")
-
+        arguments = []
+        if self.check(TokenKind.RIGHT_PAREN):
+            return arguments
+        arguments.append(self.parse_expression())
+        while self.match(TokenKind.COMMA):
+            arguments.append(self.parse_expression())
+        return arguments
