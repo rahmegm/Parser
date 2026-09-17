@@ -297,7 +297,7 @@ class Parser:
         if self.match(TokenKind.ASSIGN):
             value = self.parse_expression()
             end = self.expect(TokenKind.SEMICOLON)
-            target = IdentifierExpr(name.lexeme, span=self._token_span(name))
+            target = IdentifierExpr(start.lexeme, span=self._token_span(start))
 
             return Assignment(target, value, span=self._span(start, end))
 
@@ -307,7 +307,7 @@ class Parser:
             end = self.expect(TokenKind.SEMICOLON)
             call = CallExpr(start.lexeme, arguments, span=self._span(start, right),)
 
-            return CallStmt(call, span=self._span(name, end))
+            return CallStmt(call, span=self._span(start, end))
 
         raise ParserError(self.peek(), {TokenKind.ASSIGN, TokenKind.LEFT_PAREN},)
 
